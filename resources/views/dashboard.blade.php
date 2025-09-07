@@ -2,9 +2,12 @@
     <div class="flex flex-col md:flex-row h-screen">
         <!-- Botón de Emergencia -->
         <div class="flex-1 flex items-center justify-center bg-gray-100">
-            <button class="bg-red-600 hover:bg-red-700 text-white text-3xl font-bold py-20 px-20 rounded-2xl shadow-lg w-5/6 h-5/6 flex items-center justify-center text-center">
-                🚨 Emergencia
-            </button>
+            <!-- Botón de emergencia -->
+<form action="{{ route('emergencia') }}" method="GET">
+    <button type="submit" class="w-full h-48 bg-red-600 text-white text-2xl font-bold rounded-xl shadow-lg hover:bg-red-700 transition">
+        🚨 Emergencia
+    </button>
+</form>
         </div>
 
         <!-- Sección Recordatorios -->
