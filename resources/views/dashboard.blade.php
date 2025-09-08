@@ -79,11 +79,6 @@
                             </template>
                             <p x-show="upcomingAppointments.length === 0" class="text-gray-600 dark:text-gray-400 text-center text-lg">No tienes citas próximas.</p>
 
-                            <div class="mt-3 text-center">
-                                <button @click="showFullList()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-lg font-semibold">
-                                    Ver todas / Añadir cita
-                                </button>
-                            </div>
                         </div>
 
                         <!-- Formulario de añadir cita (solo si showAddForm = true) -->
