@@ -13,31 +13,34 @@ class EmergencyContactController extends Controller
      * Display a listing of the resource.
      */
     public function index()
-    {
-        $user = Auth::user();
-        $contact = EmergencyContact::where('user_id', $user->id)->first();
+{
+    $user = Auth::user();
+    $contact = EmergencyContact::where('user_id', $user->id)->first();
 
-        // Si no hay contacto, redirige al formulario
-        if (!$contact) {
-            return redirect()->route('emergencia.contacto.form');
-        }
-
-        // Enviar correo si existe email
-        if ($contact->email) {
-             Mail::raw("🚨 Emergencia: El usuario {$user->name} ({$contact->relationship}) ha presionado el botón de emergencia.",
-                 function ($message) use ($contact) {
-                     $message->to($contact->email)
-                             ->subject('🚨 Alerta de Emergencia');
-                 });
-     }
-
-        // Si hay teléfono, intenta abrir la app de llamadas
-        if ($contact->phone) {
-            return redirect("tel:{$contact->phone}");
-        }
-
-        return back()->with('success', 'Se ha enviado la alerta de emergencia.');
+    if (!$contact) {
+        return redirect()->route('emergencia.contacto.form');
     }
+
+    // Si el usuario acaba de registrarlo, no enviar alerta
+    if (session('just_registered')) {
+        return back()->with('success', 'Contacto de emergencia listo.');
+    }
+
+    if ($contact->email) {
+         Mail::raw("🚨 Emergencia: El usuario {$user->name} ({$contact->relationship}) ha presionado el botón de emergencia.",
+             function ($message) use ($contact) {
+                 $message->to($contact->email)
+                         ->subject('🚨 Alerta de Emergencia');
+             });
+    }
+
+    if ($contact->phone) {
+        return redirect("tel:{$contact->phone}");
+    }
+
+    return back()->with('success', 'Se ha enviado la alerta de emergencia.');
+}
+
 
      public function form()
     {
@@ -56,26 +59,32 @@ class EmergencyContactController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {
-        $request->validate([
-            'name'        => 'required|string|max:255',
-            'relationship'=> 'required|string|max:100',
-            'phone'       => 'nullable|string|max:20',
-            'email'       => 'nullable|email',
-        ]);
+{
+    $request->validate([
+        'name'        => 'required|string|max:255',
+        'relationship'=> 'required|string|max:100',
+        'phone'       => 'nullable|string|max:20',
+        'email'       => 'nullable|email',
+    ]);
 
-        EmergencyContact::updateOrCreate(
-            ['user_id' => Auth::id()],
-            [
-                'name'        => $request->name,
-                'relationship'=> $request->relationship,
-                'phone'       => $request->phone,
-                'email'       => $request->email,
-            ]
-        );
+    EmergencyContact::updateOrCreate(
+        ['user_id' => Auth::id()],
+        [
+            'name'        => $request->name,
+            'relationship'=> $request->relationship,
+            'phone'       => $request->phone,
+            'email'       => $request->email,
+        ]
+    );
 
-        return redirect()->route('emergencia')->with('success', 'Contacto de emergencia guardado.');
-    }
+    // Guardamos mensaje de éxito
+    session()->flash('success', 'Contacto de emergencia creado correctamente.');
+
+    // Redirigir al dashboard
+    return redirect()->route('dashboard');
+}
+
+
 
     /**
      * Display the specified resource.
