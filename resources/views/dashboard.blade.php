@@ -11,7 +11,7 @@
     </div>
     @endif
 
-    <div class="flex flex-col md:flex-row h-screen p-4 gap-4" x-data="appointmentModal()">
+    <div class="flex flex-col md:flex-row h-screen p-4 gap-4" x-data="mainDashboard()">
         <!-- Emergencia -->
         <div class="flex-1 flex items-center justify-center rounded-2xl shadow-md">
             <form action="{{ route('emergencia') }}" method="GET" class="w-full h-full flex items-center justify-center">
@@ -41,14 +41,24 @@
                 </button>
             </div>
 
-            <!-- Botón de Medicamentos -->
-            <div class="flex-1 flex items-center justify-center rounded-2xl shadow-md">
-                <button class="w-11/12 h-5/6 bg-green-600 hover:bg-green-700 text-white text-2xl font-bold rounded-2xl shadow-lg flex items-center justify-center text-center">
-                    💊 Recordatorio de Medicamentos
+            <!-- Botones de Medicamentos -->
+            <div class="flex-1 flex gap-4">
+                <!-- Ver medicamentos -->
+                <button 
+                    @click="openViewMeds()" 
+                    class="flex-1 h-5/6 bg-purple-600 hover:bg-purple-700 text-white text-2xl font-bold rounded-2xl shadow-lg flex items-center justify-center text-center">
+                    💊 Ver Medicamentos
+                </button>
+
+                <!-- Nuevo medicamento -->
+                <button 
+                    @click="openNewMed()" 
+                    class="flex-1 h-5/6 bg-teal-600 hover:bg-teal-700 text-white text-2xl font-bold rounded-2xl shadow-lg flex items-center justify-center text-center">
+                    ➕ Nuevo Medicamento
                 </button>
             </div>
 
-            <!-- Modal de Citas -->
+            <!-- Modal General -->
             <div 
                 x-show="openModal"
                 class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -63,13 +73,13 @@
 
                     <!-- Toast -->
                     <div x-show="showToast" x-transition class="mb-2 p-3 bg-green-100 text-green-800 rounded shadow text-center text-lg font-semibold">
-                        ¡Cita guardada correctamente!
+                        ✅ Guardado correctamente
                     </div>
 
-                    <!-- Contenido -->
+                    <!-- Contenido dinámico -->
                     <div class="flex-1 flex flex-col overflow-hidden">
-                        <!-- Lista de citas (solo si showList = true) -->
-                        <div class="space-y-3 overflow-y-auto" x-show="showList" style="max-height: calc(80vh - 140px);">
+                        <!-- Lista de citas -->
+                        <div class="space-y-3 overflow-y-auto" x-show="showListCitas" style="max-height: calc(80vh - 140px);">
                             <template x-for="appointment in upcomingAppointments" :key="appointment.id">
                                 <div class="p-4 border rounded-xl bg-gray-50 dark:bg-gray-700 shadow-sm">
                                     <h3 class="font-bold text-lg" x-text="appointment.title"></h3>
@@ -78,11 +88,10 @@
                                 </div>
                             </template>
                             <p x-show="upcomingAppointments.length === 0" class="text-gray-600 dark:text-gray-400 text-center text-lg">No tienes citas próximas.</p>
-
                         </div>
 
-                        <!-- Formulario de añadir cita (solo si showAddForm = true) -->
-                        <div x-show="showAddForm" class="flex-1 flex flex-col overflow-y-auto" style="max-height: calc(80vh - 150px);">
+                        <!-- Formulario nueva cita -->
+                        <div x-show="showAddCita" class="flex-1 flex flex-col overflow-y-auto">
                             <form @submit.prevent="addAppointment" class="space-y-2 mt-2">
                                 <input type="text" x-model="form.title" placeholder="Título" class="w-full px-3 py-2 border rounded-xl text-lg" required>
                                 <input type="date" x-model="form.date" class="w-full px-3 py-2 border rounded-xl text-lg" required>
@@ -92,31 +101,67 @@
                                 <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl w-full text-lg font-semibold">Guardar Cita</button>
                             </form>
                         </div>
+
+                        <!-- Lista de medicamentos -->
+                        <div class="space-y-3 overflow-y-auto" x-show="showListMeds" style="max-height: calc(80vh - 140px);">
+                            <template x-for="med in medications" :key="med.id">
+                                <div class="p-4 border rounded-xl bg-gray-50 dark:bg-gray-700 shadow-sm">
+                                    <h3 class="font-bold text-lg" x-text="med.name"></h3>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300" x-text="med.dosage + ' - ' + med.frequency"></p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300" x-text="'⏰ ' + med.time"></p>
+                                    <p class="text-gray-700 dark:text-gray-200" x-text="med.notes"></p>
+                                </div>
+                            </template>
+                            <p x-show="medications.length === 0" class="text-gray-600 dark:text-gray-400 text-center text-lg">No tienes medicamentos registrados.</p>
+                        </div>
+
+                        <!-- Formulario nuevo medicamento -->
+                        <div x-show="showAddMed" class="flex-1 flex flex-col overflow-y-auto">
+                            <form @submit.prevent="addMedication" class="space-y-2 mt-2">
+                                <input type="text" x-model="medForm.name" placeholder="Nombre del medicamento" class="w-full px-3 py-2 border rounded-xl text-lg" required>
+                                <input type="text" x-model="medForm.dosage" placeholder="Dosis (ej: 500mg)" class="w-full px-3 py-2 border rounded-xl text-lg">
+                                <input type="text" x-model="medForm.frequency" placeholder="Frecuencia (ej: cada 8 horas)" class="w-full px-3 py-2 border rounded-xl text-lg">
+                                <input type="time" x-model="medForm.time" class="w-full px-3 py-2 border rounded-xl text-lg" required>
+                                <textarea x-model="medForm.notes" placeholder="Notas adicionales" class="w-full px-3 py-2 border rounded-xl text-lg"></textarea>
+                                <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl w-full text-lg font-semibold">Guardar Medicamento</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    
 
 <script>
-function appointmentModal() {
+function mainDashboard() {
     return {
+        // Modal control
         openModal: false,
-        showList: false,
-        showFull: false, // Para ver todas las citas + formulario
-        showAddForm: false, // Para solo formulario
+        modalTitle: '',
         showToast: false,
+
+        // Citas
         appointments: [],
         upcomingAppointments: [],
         form: { title: '', date: '', time: '', location: '', notes: '' },
-        modalTitle: '',
+        showListCitas: false,
+        showAddCita: false,
 
+        // Medicamentos
+        medications: [],
+        medForm: { name: '', dosage: '', frequency: '', time: '', notes: '' },
+        showListMeds: false,
+        showAddMed: false,
+
+        // ---- Citas ----
         openViewCitas() {
             this.modalTitle = "📅 Mis Citas";
             this.openModal = true;
-            this.showList = true;
-            this.showFull = false;
-            this.showAddForm = false;
+            this.showListCitas = true;
+            this.showAddCita = false;
+            this.showListMeds = false;
+            this.showAddMed = false;
 
             axios.get("{{ route('appointments.index') }}")
                 .then(res => {
@@ -124,30 +169,16 @@ function appointmentModal() {
                     const today = new Date().toISOString().split('T')[0];
                     this.upcomingAppointments = res.data.filter(a => a.date >= today);
                 })
-                .catch(err => {
-                    alert('Error al cargar las citas');
-                });
+                .catch(() => alert('Error al cargar las citas'));
         },
 
         openNewCita() {
             this.modalTitle = "➕ Nueva Cita";
             this.openModal = true;
-            this.showList = false;
-            this.showFull = false;
-            this.showAddForm = true;
-        },
-
-        showFullList() {
-            this.showList = false;
-            this.showFull = true;
-            this.showAddForm = true;
-        },
-
-        closeModal() {
-            this.openModal = false;
-            this.showList = false;
-            this.showFull = false;
-            this.showAddForm = false;
+            this.showListCitas = false;
+            this.showAddCita = true;
+            this.showListMeds = false;
+            this.showAddMed = false;
         },
 
         addAppointment() {
@@ -161,9 +192,52 @@ function appointmentModal() {
                     this.showToast = true;
                     setTimeout(() => { this.showToast = false }, 5000);
                 })
-                .catch(err => {
-                    alert('Error al guardar la cita');
-                });
+                .catch(() => alert('Error al guardar la cita'));
+        },
+
+        // ---- Medicamentos ----
+        openViewMeds() {
+            this.modalTitle = "💊 Mis Medicamentos";
+            this.openModal = true;
+            this.showListCitas = false;
+            this.showAddCita = false;
+            this.showListMeds = true;
+            this.showAddMed = false;
+
+            axios.get("{{ route('medications.index') }}")
+                .then(res => {
+                    this.medications = res.data;
+                })
+                .catch(() => alert('Error al cargar los medicamentos'));
+        },
+
+        openNewMed() {
+            this.modalTitle = "➕ Nuevo Medicamento";
+            this.openModal = true;
+            this.showListCitas = false;
+            this.showAddCita = false;
+            this.showListMeds = false;
+            this.showAddMed = true;
+        },
+
+        addMedication() {
+            axios.post("{{ route('medications.store') }}", this.medForm)
+                .then(res => {
+                    this.medications.push(res.data);
+                    this.medForm = { name: '', dosage: '', frequency: '', time: '', notes: '' };
+                    this.showToast = true;
+                    setTimeout(() => { this.showToast = false }, 5000);
+                })
+                .catch(() => alert('Error al guardar el medicamento'));
+        },
+
+        // Cerrar modal
+        closeModal() {
+            this.openModal = false;
+            this.showListCitas = false;
+            this.showAddCita = false;
+            this.showListMeds = false;
+            this.showAddMed = false;
         }
     }
 }

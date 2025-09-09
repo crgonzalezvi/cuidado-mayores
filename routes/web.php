@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\EmergencyContactController;
+use App\Http\Controllers\MedicationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +48,24 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
     Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+
+    Route::post('/medications', [MedicationController::class, 'store'])->name('medications.store');
+
+    Route::resource('medications', MedicationController::class);
+
+    Route::post('/ai-chat', function (Request $request) {
+    $prompt = $request->input('prompt');
+
+    $response = Http::post('http://localhost:11434/api/generate', [
+        'model' => 'llama3.2:3b',
+        'prompt' => $prompt,
+        'stream' => false
+    ]);
+
+    return $response->json();
 });
+});
+
+
 
 require __DIR__.'/auth.php';

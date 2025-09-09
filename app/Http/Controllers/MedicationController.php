@@ -2,63 +2,64 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Medication;
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class MedicationController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Listar medicamentos del usuario autenticado
      */
     public function index()
     {
-        //
+        $medications = Medication::where('user_id', Auth::id())->get();
+        return response()->json($medications);
     }
 
     /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
+     * Guardar un nuevo medicamento
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'name'      => 'required|string|max:255',
+            'dosage'    => 'required|string|max:255',
+            'frequency' => 'required|string|max:255',
+            'time'      => 'required',
+            'notes'     => 'nullable|string',
+        ]);
+
+        // Normalizar la hora
+        try {
+            if (preg_match('/^\d{2}:\d{2}$/', $request->time)) {
+                $time = Carbon::createFromFormat('H:i', $request->time)->format('H:i:s');
+            } elseif (preg_match('/^\d{2}:\d{2}:\d{2}$/', $request->time)) {
+                $time = $request->time;
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $request->time)) {
+                $time = Carbon::createFromFormat('Y-m-d\TH:i', $request->time)->format('H:i:s');
+            } else {
+                return response()->json(['error' => 'Formato de hora no válido'], 422);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error procesando la hora: '.$e->getMessage()], 500);
+        }
+
+        $medication = Medication::create([
+            'user_id'   => Auth::id(),
+            'name'      => $request->name,
+            'dosage'    => $request->dosage,
+            'frequency' => $request->frequency,
+            'time'      => $time,
+            'notes'     => $request->notes,
+        ]);
+
+        return response()->json($medication);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
+    public function show(string $id) { /* ... */ }
+    public function edit(string $id) { /* ... */ }
+    public function update(Request $request, string $id) { /* ... */ }
+    public function destroy(string $id) { /* ... */ }
 }
