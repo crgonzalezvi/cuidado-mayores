@@ -77,20 +77,18 @@ Route::middleware('auth')->group(function () {
 //     return $response->json();
 // })->name('ai-chat');
 
-Route::post('/ai-chat', function (\Illuminate\Http\Request $request) {
+Route::post('/ai-chat', function (Request $request) {
     try {
         $prompt = $request->input('prompt', '');
         $userId = \Illuminate\Support\Facades\Auth::id();
 
-        // Si no hay usuario autenticado, manejamos el caso
         if (!$userId) {
             return response()->json([
                 'response' => "⚠️ No hay un usuario autenticado. Por favor inicia sesión."
             ]);
         }
 
-        // Traer citas médicas del usuario
-        $appointments = \App\Models\Appointment::where('user_id', $userId)
+        $appointments = Appointment::where('user_id', $userId)
             ->get(['date', 'time', 'notes'])
             ->toArray();
 
@@ -103,25 +101,26 @@ Route::post('/ai-chat', function (\Illuminate\Http\Request $request) {
             $context .= "- No tiene citas registradas actualmente.\n";
         }
 
-        // Enviar prompt a Ollama
-        $response = \Illuminate\Support\Facades\Http::timeout(120)->post(
-            'http://localhost:11434/api/generate',
-            [
-                'model' => 'llama3.2:3b',
-                'prompt' => $context . "\n\nPregunta del usuario: " . $prompt . "\nAsistente:",
-                'stream' => false,
-            ]
-        );
+        $promptFinal = $context . "\n\nPregunta del usuario: " . $prompt . "\nAsistente:";
 
+        // Intentar primero con el 3b
+        $response = Http::timeout(90)->post('http://localhost:11434/api/generate', [
+            'model' => 'llama3.2:3b-text-q4_0',
+            'prompt' => $promptFinal,
+            'stream' => false,
+        ]);
+
+        // Si falla, probar con 1b
         if ($response->failed()) {
-            return response()->json([
-                'error' => 'Fallo al contactar la IA',
-                'details' => $response->body(),
-            ], 500);
+            $response = Http::timeout(60)->post('http://localhost:11434/api/generate', [
+                'model' => 'llama3.2:1b',
+                'prompt' => $promptFinal,
+                'stream' => false,
+            ]);
         }
 
-        // Extraer solo la respuesta de Ollama
         $data = $response->json();
+
         return response()->json([
             'response' => $data['response'] ?? '⚠️ La IA no devolvió respuesta.',
         ]);
