@@ -8,6 +8,7 @@ use App\Http\Controllers\MedicationController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Models\Appointment;
+use App\Models\Medication;
 
 
 
@@ -75,8 +76,7 @@ Route::middleware('auth')->group(function () {
 //     ]);
 
 //     return $response->json();
-// })->name('ai-chat');
-
+// })->name('ai-chat
 Route::post('/ai-chat', function (Request $request) {
     try {
         $prompt = $request->input('prompt', '');
@@ -88,35 +88,55 @@ Route::post('/ai-chat', function (Request $request) {
             ]);
         }
 
-        $appointments = Appointment::where('user_id', $userId)
-            ->get(['date', 'time', 'notes'])
+        // Traer citas médicas (máximo 3)
+        $appointments = \App\Models\Appointment::where('user_id', $userId)
+            ->orderBy('date')
+            ->limit(3)
+            ->get(['date', 'time', 'title', 'location', 'notes'])
             ->toArray();
 
-        $context = "El usuario tiene las siguientes citas médicas:\n";
-        if (count($appointments) > 0) {
+        // Traer medicamentos (máximo 3)
+        $medications = \App\Models\Medication::where('user_id', $userId)
+            ->limit(3)
+            ->get(['name', 'dosage', 'frequency', 'time'])
+            ->toArray();
+
+        // Construir contexto resumido
+        $context = "Información del usuario:\n\n";
+
+        $context .= "📅 Citas médicas:\n";
+        if ($appointments) {
             foreach ($appointments as $cita) {
-                $context .= "- {$cita['date']} a las {$cita['time']}: {$cita['notes']}\n";
+                $context .= "- {$cita['date']} a las {$cita['time']} en {$cita['location']}: {$cita['title']}. {$cita['notes']}\n";
             }
         } else {
-            $context .= "- No tiene citas registradas actualmente.\n";
+            $context .= "- No tiene citas registradas.\n";
         }
 
-        $promptFinal = $context . "\n\nPregunta del usuario: " . $prompt . "\nAsistente:";
+        $context .= "\n💊 Medicamentos:\n";
+        if ($medications) {
+            foreach ($medications as $med) {
+                $context .= "- {$med['name']} ({$med['dosage']}), {$med['frequency']} a las {$med['time']}\n";
+            }
+        } else {
+            $context .= "- No tiene medicamentos registrados.\n";
+        }
 
-        // Intentar primero con el 3b
-        $response = Http::timeout(90)->post('http://localhost:11434/api/generate', [
-            'model' => 'llama3.2:3b-text-q4_0',
+        // Prompt corto y claro
+        $promptFinal = $context . "\n\nPregunta del usuario: $prompt\n\nResponde en frases simples, claras y amables, como si hablaras con un adulto mayor.";
+
+        // Llamada a Gemma
+        $response = Http::timeout(45)->post('http://localhost:11434/api/generate', [
+            'model' => 'gemma:2b',
             'prompt' => $promptFinal,
             'stream' => false,
         ]);
 
-        // Si falla, probar con 1b
         if ($response->failed()) {
-            $response = Http::timeout(60)->post('http://localhost:11434/api/generate', [
-                'model' => 'llama3.2:1b',
-                'prompt' => $promptFinal,
-                'stream' => false,
-            ]);
+            return response()->json([
+                'error' => 'Fallo al contactar la IA',
+                'details' => $response->body(),
+            ], 500);
         }
 
         $data = $response->json();
