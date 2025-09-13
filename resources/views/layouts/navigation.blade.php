@@ -16,19 +16,35 @@
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
+                        Panel
                     </x-nav-link>
                 </div>
             </div>
-            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                {{-- Botón solo en Dashboard --}}
+            {{-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                {{-- Botón solo en Dashboard 
                 @if (request()->is('dashboard'))
                 <a href="{{ route('emergencia.contacto.form') }}"
                 class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition">
                     👤 Registrar / Actualizar Contacto de Emergencia
                 </a>
                 @endif
-            </div>  
+            </div>   --}}
+
+            {{-- Botón solo en Dashboard --}}
+            {{-- Botón solo en Dashboard --}}
+@if (request()->is('dashboard'))
+    <a href="{{ route('emergencia.contacto.form') }}"
+       class="ml-6 my-3 bg-gradient-to-r from-yellow-400 to-yellow-500 
+              hover:from-yellow-500 hover:to-yellow-600 
+              text-white font-semibold px-5 py-2.5 
+              rounded-xl shadow-lg transition transform hover:scale-105
+              flex items-center gap-2">
+        👤 <span>Registrar / Actualizar Contacto de Emergencia</span>
+    </a>
+@endif
+
+
+
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
@@ -47,7 +63,7 @@
 
                     <x-slot name="content">
                         <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
+                            Perfil
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -57,7 +73,7 @@
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
                                                 this.closest('form').submit();">
-                                {{ __('Log Out') }}
+                                Cerrar sesión
                             </x-dropdown-link>
                         </form>
                     </x-slot>
@@ -80,7 +96,7 @@
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
+                Panel
             </x-responsive-nav-link>
         </div>
 
@@ -93,7 +109,7 @@
 
             <div class="mt-3 space-y-1">
                 <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Profile') }}
+                    Perfil
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->
@@ -103,7 +119,7 @@
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">
-                        {{ __('Log Out') }}
+                        Cerrar sesión
                     </x-responsive-nav-link>
                 </form>
             </div>
