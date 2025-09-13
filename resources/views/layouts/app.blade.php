@@ -7,6 +7,8 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -19,26 +21,30 @@
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
             @include('layouts.navigation')
 
+            
+            
             <!-- Page Heading -->
-            @if (isset($header))
-                <header class="bg-white dark:bg-gray-800 shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
+            <header class="bg-white dark:bg-gray-800 shadow">
+                <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                    <div>
+                        {{-- Título de página si existe --}}
+                        @yield('page-title')
                     </div>
-                </header>
-            @endif
+                    
+                </div>
+            </header>
 
             <!-- Page Content -->
             <main>
                 {{ $slot }}
             </main>
 
-             <!-- Footer global -->
             <!-- Footer global -->
             <footer class="bg-gray-100 dark:bg-gray-800 mt-8 rounded-t-2xl shadow-inner">
                 <div class="max-w-7xl mx-auto px-4 py-6 flex items-center justify-center">
                     <p class="text-gray-600 dark:text-gray-400 text-sm font-medium">
-                        Desarrollado por <span class="font-bold text-purple-600 dark:text-purple-400">
+                        Desarrollado por 
+                        <span class="font-bold text-purple-600 dark:text-purple-400">
                             Cristian Camilo Gonzalez Villa
                         </span>
                     </p>

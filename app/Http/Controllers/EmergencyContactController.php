@@ -18,7 +18,7 @@ class EmergencyContactController extends Controller
     $contact = EmergencyContact::where('user_id', $user->id)->first();
 
     if (!$contact) {
-        return redirect()->route('emergencia.contacto.form');
+        return redirect()->route('dashboard')->with('showEmergencyForm', true);
     }
 
     // Si el usuario acaba de registrarlo, no enviar alerta
@@ -39,6 +39,30 @@ class EmergencyContactController extends Controller
     }
 
     return back()->with('success', 'Se ha enviado la alerta de emergencia.');
+}
+
+public function sendAlert()
+{
+    $user = Auth::user();
+    $contacts = EmergencyContact::where('user_id', $user->id)->get();
+
+    if ($contacts->isEmpty()) {
+        return back()->with('error', '⚠️ No tienes contactos de emergencia registrados.');
+    }
+
+    foreach ($contacts as $contact) {
+        if ($contact->email) {
+            Mail::raw(
+                "🚨 Emergencia: El usuario {$user->name} ({$contact->relationship}) ha presionado el botón de emergencia.",
+                function ($message) use ($contact) {
+                    $message->to($contact->email)
+                            ->subject('🚨 Alerta de Emergencia');
+                }
+            );
+        }
+    }
+
+    return back()->with('success', '🚨 Se ha enviado una alerta a tus contactos de emergencia.');
 }
 
 

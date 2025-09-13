@@ -20,6 +20,15 @@
                     </x-nav-link>
                 </div>
             </div>
+            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                {{-- Botón solo en Dashboard --}}
+                @if (request()->is('dashboard'))
+                <a href="{{ route('emergencia.contacto.form') }}"
+                class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition">
+                    👤 Registrar / Actualizar Contacto de Emergencia
+                </a>
+                @endif
+            </div>  
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">

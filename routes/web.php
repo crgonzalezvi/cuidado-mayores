@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Models\Appointment;
 use App\Models\Medication;
+use App\Models\EmergencyContact;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\EmergenciaMail;
+
 
 
 
@@ -30,6 +35,7 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -62,6 +68,27 @@ Route::middleware('auth')->group(function () {
     
 });
 
+// **Ruta Emergencia EMAIL**
+Route::get('/emergencia', function () {
+    $user = Auth::user();
+
+    if (!$user) {
+        return redirect()->back()->with('error', '⚠️ Debes iniciar sesión.');
+    }
+
+    // Buscar contacto de emergencia del usuario
+    $contact = EmergencyContact::where('user_id', $user->id)->first();
+
+    if (!$contact) {
+        return redirect()->back()->with('error', '⚠️ No tienes un contacto de emergencia configurado.');
+    }
+
+    // Enviar correo al contacto
+    Mail::to($contact->email)->send(new EmergenciaMail($user));
+
+    return redirect()->back()->with('success', '🚨 Se envió la alerta al contacto de emergencia: ' . $contact->name);
+})->name('emergencia');
+
 
 
  // **Ruta IA**
@@ -77,6 +104,10 @@ Route::middleware('auth')->group(function () {
 
 //     return $response->json();
 // })->name('ai-chat
+
+Route::get('/emergencia', [EmergencyContactController::class, 'sendAlert'])
+    ->name('emergencia');
+
 Route::post('/ai-chat', function (Request $request) {
     try {
         $prompt = $request->input('prompt', '');
@@ -88,49 +119,48 @@ Route::post('/ai-chat', function (Request $request) {
             ]);
         }
 
-        // Traer citas médicas del usuario
+        // Traer citas médicas (máximo 3)
         $appointments = \App\Models\Appointment::where('user_id', $userId)
-            ->get(['title', 'date', 'time', 'location', 'notes'])
+            ->orderBy('date')
+            ->limit(3)
+            ->get(['date', 'time', 'title', 'location', 'notes'])
             ->toArray();
 
-        // Traer medicamentos del usuario
+        // Traer medicamentos (máximo 3)
         $medications = \App\Models\Medication::where('user_id', $userId)
-            ->get(['name', 'dosage', 'frequency', 'time', 'notes'])
+            ->limit(3)
+            ->get(['name', 'dosage', 'frequency', 'time'])
             ->toArray();
 
-        // Construir contexto claro y sencillo
-        $context = "Eres un asistente personal para adultos mayores.\n";
-        $context .= "Habla siempre con amabilidad y frases fáciles de entender.\n";
-        $context .= "Usa viñetas (•) o guiones (-) para enumerar.\n";
-        $context .= "Incluye siempre fecha, hora, título y lugar en las citas.\n";
-        $context .= "En los medicamentos incluye nombre, dosis, frecuencia, hora y notas.\n\n";
+        // Construir contexto resumido
+        $context = "Información del usuario:\n\n";
 
+        // 📅 Formato de citas en bloques claros
         $context .= "📅 Citas médicas:\n";
-        if (count($appointments) > 0) {
+        if ($appointments) {
             foreach ($appointments as $cita) {
-                $title = $cita['title'] ?? 'Sin título';
-                $date = $cita['date'] ?? 'Sin fecha';
-                $time = $cita['time'] ?? 'Sin hora';
-                $location = $cita['location'] ?? 'Sin ubicación';
-                $notes = $cita['notes'] ?? 'Sin notas';
-                $context .= "- El {$date} a las {$time} en {$location}: {$title}. {$notes}\n";
+                $context .= "{$cita['title']}\n";
+                $context .= "{$cita['date']} {$cita['time']} - {$cita['location']}\n";
+                $context .= strtoupper($cita['notes'] ?? '') . "\n\n";
             }
         } else {
-            $context .= "- No tiene citas registradas actualmente.\n";
+            $context .= "- No tiene citas registradas.\n";
         }
 
+        // 💊 Medicamentos
         $context .= "\n💊 Medicamentos:\n";
-        if (count($medications) > 0) {
+        if ($medications) {
             foreach ($medications as $med) {
-                $context .= "- {$med['name']} ({$med['dosage']}, {$med['frequency']}, hora: {$med['time']}): {$med['notes']}\n";
+                $context .= "- {$med['name']} ({$med['dosage']}), {$med['frequency']} a las {$med['time']}\n";
             }
         } else {
-            $context .= "- No tiene medicamentos registrados actualmente.\n";
+            $context .= "- No tiene medicamentos registrados.\n";
         }
 
-        $promptFinal = $context . "\n\nPregunta del usuario: " . $prompt . "\nResponde de forma clara, amable y breve.\n";
+        // Prompt corto y claro
+        $promptFinal = $context . "\n\nPregunta del usuario: $prompt\n\nResponde en frases simples, claras y amables, como si hablaras con un adulto mayor.";
 
-        // Usamos gemma:2b como modelo
+        // Llamada a Gemma
         $response = Http::timeout(180)->post('http://localhost:11434/api/generate', [
             'model' => 'gemma:2b',
             'prompt' => $promptFinal,
@@ -157,6 +187,7 @@ Route::post('/ai-chat', function (Request $request) {
         ], 500);
     }
 })->name('ai-chat');
+
 
 
 require __DIR__.'/auth.php';
