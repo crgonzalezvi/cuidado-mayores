@@ -88,45 +88,50 @@ Route::post('/ai-chat', function (Request $request) {
             ]);
         }
 
-        // Traer citas médicas (máximo 3)
+        // Traer citas médicas del usuario
         $appointments = \App\Models\Appointment::where('user_id', $userId)
-            ->orderBy('date')
-            ->limit(3)
-            ->get(['date', 'time', 'title', 'location', 'notes'])
+            ->get(['title', 'date', 'time', 'location', 'notes'])
             ->toArray();
 
-        // Traer medicamentos (máximo 3)
+        // Traer medicamentos del usuario
         $medications = \App\Models\Medication::where('user_id', $userId)
-            ->limit(3)
-            ->get(['name', 'dosage', 'frequency', 'time'])
+            ->get(['name', 'dosage', 'frequency', 'time', 'notes'])
             ->toArray();
 
-        // Construir contexto resumido
-        $context = "Información del usuario:\n\n";
+        // Construir contexto claro y sencillo
+        $context = "Eres un asistente personal para adultos mayores.\n";
+        $context .= "Habla siempre con amabilidad y frases fáciles de entender.\n";
+        $context .= "Usa viñetas (•) o guiones (-) para enumerar.\n";
+        $context .= "Incluye siempre fecha, hora, título y lugar en las citas.\n";
+        $context .= "En los medicamentos incluye nombre, dosis, frecuencia, hora y notas.\n\n";
 
         $context .= "📅 Citas médicas:\n";
-        if ($appointments) {
+        if (count($appointments) > 0) {
             foreach ($appointments as $cita) {
-                $context .= "- {$cita['date']} a las {$cita['time']} en {$cita['location']}: {$cita['title']}. {$cita['notes']}\n";
+                $title = $cita['title'] ?? 'Sin título';
+                $date = $cita['date'] ?? 'Sin fecha';
+                $time = $cita['time'] ?? 'Sin hora';
+                $location = $cita['location'] ?? 'Sin ubicación';
+                $notes = $cita['notes'] ?? 'Sin notas';
+                $context .= "- El {$date} a las {$time} en {$location}: {$title}. {$notes}\n";
             }
         } else {
-            $context .= "- No tiene citas registradas.\n";
+            $context .= "- No tiene citas registradas actualmente.\n";
         }
 
         $context .= "\n💊 Medicamentos:\n";
-        if ($medications) {
+        if (count($medications) > 0) {
             foreach ($medications as $med) {
-                $context .= "- {$med['name']} ({$med['dosage']}), {$med['frequency']} a las {$med['time']}\n";
+                $context .= "- {$med['name']} ({$med['dosage']}, {$med['frequency']}, hora: {$med['time']}): {$med['notes']}\n";
             }
         } else {
-            $context .= "- No tiene medicamentos registrados.\n";
+            $context .= "- No tiene medicamentos registrados actualmente.\n";
         }
 
-        // Prompt corto y claro
-        $promptFinal = $context . "\n\nPregunta del usuario: $prompt\n\nResponde en frases simples, claras y amables, como si hablaras con un adulto mayor.";
+        $promptFinal = $context . "\n\nPregunta del usuario: " . $prompt . "\nResponde de forma clara, amable y breve.\n";
 
-        // Llamada a Gemma
-        $response = Http::timeout(45)->post('http://localhost:11434/api/generate', [
+        // Usamos gemma:2b como modelo
+        $response = Http::timeout(180)->post('http://localhost:11434/api/generate', [
             'model' => 'gemma:2b',
             'prompt' => $promptFinal,
             'stream' => false,
@@ -152,7 +157,6 @@ Route::post('/ai-chat', function (Request $request) {
         ], 500);
     }
 })->name('ai-chat');
-
 
 
 require __DIR__.'/auth.php';
